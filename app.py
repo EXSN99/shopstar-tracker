@@ -13,8 +13,18 @@ st.set_page_config(
 
 @st.cache_data(ttl=3600)
 def load_data():
-    db_url = os.getenv('DATABASE_URL')
+    # 1. Intentar leer el secreto desde Streamlit Cloud
+    try:
+        db_url = st.secrets["DATABASE_URL"]
+    except (KeyError, FileNotFoundError):
+        # 2. Si falla, intentar leer de la variable de entorno local
+        db_url = os.getenv('DATABASE_URL')
+
     if db_url:
+        # 3. SQLAlchemy requiere el prefijo postgresql://
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+            
         engine = create_engine(db_url)
         df = pd.read_sql('SELECT * FROM price_history', engine)
     else:
