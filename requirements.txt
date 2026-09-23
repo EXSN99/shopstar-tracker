@@ -1,0 +1,7 @@
+playwright>=1.45
+pandas>=2.0
+openpyxl>=3.1
+sqlalchemy
+psycopg2-binary
+streamlit
+plotly
