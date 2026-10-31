@@ -1,6 +1,12 @@
 name: Extraer Shopstar
 
 on:
+  # Activación extraordinaria controlada: solo si cambia este marcador.
+  # Los commits normales del dashboard NO ejecutan el scraper.
+  push:
+    branches: [main]
+    paths:
+      - 'ops/trigger-full-scrape.txt'
   schedule:
     - cron: '17 8,20 * * *'
       timezone: 'America/Lima'

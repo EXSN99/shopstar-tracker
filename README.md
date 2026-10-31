@@ -137,3 +137,28 @@ pertenezca a un artículo cuando el sitio cambia su HTML.
 
 Las 2 fichas legítimas `PARTIAL` en el Excel original **no se descartan por URL**:
 se conservan para revisión de extracción.
+
+## Dashboard visual y extracción completa
+
+El dashboard desplegado en **https://shopstar-tracker-millas.streamlit.app/** dispone de
+cuatro vistas: panorama de ratios y precios, ranking de productos, histórico por
+producto y calidad de extracciones. Al actualizar la rama `main`, Streamlit
+Community Cloud sincroniza los cambios y reinstala dependencias nuevas.
+
+El workflow `Extraer Shopstar` se programa automáticamente **todos los días a
+las 08:17 y 20:17 en Lima** (`America/Lima`). Cada ejecución programada usa
+`max_pages=50` y `limit=0` (sin límite de productos). La concurrencia
+`shopstar-extraccion` evita ejecuciones simultáneas, y los datos se agregan
+por corrida en Neon PostgreSQL sin sobreescribir el histórico.
+
+Una ejecución completa excepcional se puede iniciar creando o modificando
+`ops/trigger-full-scrape.txt` en `main` (el único archivo que activa
+`on.push.paths` en el workflow). Los cambios de código normales **no**
+disparan una extracción. También puede iniciarse desde **Actions > Extraer
+Shopstar > Run workflow**, con `max_pages=50`, `limit=0`.
+
+Si el flujo falla tras procesar varios productos, los lotes confirmados
+permanecen asociados a una corrida `FAILED`, nunca se presentan como un
+escaneo completo. El dashboard solo selecciona corridas `COMPLETED` o
+`PARTIAL`. GitHub Actions puede retrasar las ejecuciones programadas;
+la hora indicada es el horario configurado, no una garantía de inicio exacto.
