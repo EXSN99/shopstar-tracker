@@ -114,3 +114,26 @@ streamlit run streamlit_app.py
 Para verificar **este proyecto Python**, usa `python -m pytest -q` y `python -m compileall -q .`. No existe `package.json`, por tanto `npm run build` no aplica.
 
 Si tu red o la autenticación impiden instalar Neon CLI, configura `DATABASE_URL` desde Neon Console: no bloquea el despliegue de este scraper Python.
+
+## Control de calidad de enlaces (31/10/2026)
+
+Se auditó el archivo proporcionado `shopstar_analysis.xlsx`, 111 registros de la hoja `Analisis`.
+Se identificaron **4 URLs que no son páginas de producto**: `/peds-millas`,
+`/promociones`, `/politica-de-privacidad` y `/ps5?map=ft&_q=ps5`.
+Dos de estas habían sido marcadas como `OK` porque el scraper analizaba el texto de
+toda la página. Las restantes 107 URLs usan la ruta de ficha `/<slug>/p`.
+
+**Corrección:** `metrics.is_product_url` y `canonical_url` exigen que la ruta
+termine en `/p`. El descubrimiento filtra los enlaces antes de encolarlos; la
+importación desde CSV pasa por el mismo filtro; la persistencia valida la URL
+mediante `canonical_url`. Las URLs con parámetros de campaña se normalizan.
+Si Shopstar cambia el patrón de rutas, será necesario revisar el filtro.
+
+**Calidad de extracción:** si una URL se redirige a una página distinta de una
+ficha de producto se descarta con un error. Si no se obtiene un nombre en `h1`,
+el registro queda `PARTIAL`; no se clasificará erróneamente como `OK`.
+Estas validaciones son estructurales, no garantizan por sí solas que el precio
+pertenezca a un artículo cuando el sitio cambia su HTML.
+
+Las 2 fichas legítimas `PARTIAL` en el Excel original **no se descartan por URL**:
+se conservan para revisión de extracción.

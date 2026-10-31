@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from playwright.sync_api import sync_playwright
 from db import finish_run, init_db, save_batch, start_run
-from metrics import canonical_url, failed_scrape_record
+from metrics import failed_scrape_record, filter_product_urls
 from shopstar_scraper import discover_urls, extract_product
 
 COLUMNS = ["url","product_name","seller","price_current","price_previous","price_discount_pct",
@@ -50,8 +50,12 @@ def run(args,db_url):
                     urls=df_in.url.dropna().astype(str).tolist()
                 else:
                     urls=discover_urls(page,args.max_pages)
-                urls=list(dict.fromkeys(canonical_url(u) for u in urls))
-                discovered=len(urls)
+                urls, rejected = filter_product_urls(urls)
+                discovered = len(urls)
+                if rejected:
+                    print(f"Se excluyeron {len(rejected)} enlaces que no son fichas de producto.", flush=True)
+                    for bad_url in rejected[:10]:
+                        print(f"  DESCARTADO: {bad_url[:200]}", flush=True)
                 if args.limit>0:
                     urls=urls[:args.limit]
                 if not urls:

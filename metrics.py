@@ -1,14 +1,52 @@
 """Reglas de negocio independientes del navegador y del almacenamiento."""
 import hashlib
+import re
 from urllib.parse import urlsplit, urlunsplit
 
 RATIO_UMBRAL = 20.0
 
+# Las fichas del Excel real usan /<slug>/p, no basta con buscar "/p".
+# El slug NO requiere un ID numérico (hay productos genuinos sin ID al final).
+PRODUCT_PATH_RE = re.compile(r"^/[^/?#]+/p/?$", re.IGNORECASE)
+
+
+def is_product_url(raw_url: str) -> bool:
+    """Valida dominio Shopstar y ruta completa de ficha de producto."""
+    try:
+        parts = urlsplit(str(raw_url).strip())
+        return (
+            parts.scheme.lower() in ("http", "https")
+            and parts.hostname in ("shopstar.pe", "www.shopstar.pe")
+            and parts.username is None
+            and parts.password is None
+            and (parts.port is None or parts.port in (80, 443))
+            and PRODUCT_PATH_RE.fullmatch(parts.path) is not None
+        )
+    except (ValueError, AttributeError):
+        return False
+
+
 def canonical_url(raw_url: str) -> str:
+    """URL canónica. Rechaza categorías, promociones, búsquedas y rutas ajenas."""
+    if not is_product_url(raw_url):
+        raise ValueError("No es una URL de ficha de producto de Shopstar")
     parts = urlsplit(str(raw_url).strip())
-    if parts.scheme.lower() not in ("http", "https") or parts.hostname not in ("shopstar.pe", "www.shopstar.pe"):
-        raise ValueError("URL de producto fuera del dominio shopstar.pe")
-    return urlunsplit(("https", "www.shopstar.pe", parts.path.rstrip("/") or "/", "", ""))
+    return urlunsplit(("https", "www.shopstar.pe", parts.path.rstrip("/"), "", ""))
+
+
+def filter_product_urls(urls):
+    """Devuelve (URLs únicas válidas, URLs rechazadas) sin contaminar la ingesta."""
+    accepted, rejected, seen = [], [], set()
+    for raw in urls:
+        try:
+            normalized = canonical_url(raw)
+        except ValueError:
+            rejected.append(str(raw))
+            continue
+        if normalized not in seen:
+            seen.add(normalized)
+            accepted.append(normalized)
+    return accepted, rejected
 
 def product_id(url: str) -> str:
     return hashlib.sha256(canonical_url(url).encode("utf-8")).hexdigest()

@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urljoin
+from metrics import canonical_url, is_product_url
 
 import pandas as pd
 from playwright.sync_api import sync_playwright
@@ -67,23 +68,19 @@ def render_campaign_page(page, url):
 
 def campaign_product_urls(page, url):
     render_campaign_page(page, url)
-    urls = []
+    urls, seen = [], set()
     links = page.locator("a[href]")
     count = min(links.count(), 5000)
     for i in range(count):
         try:
             href = links.nth(i).get_attribute("href") or ""
             full = urljoin(BASE, href)
-            parsed = full.split("#", 1)[0]
-            if not parsed.startswith(BASE + "/"):
+            if not is_product_url(full):
                 continue
-            path = parsed[len(BASE):]
-            if "/p" not in path:
-                continue
-            if parsed.startswith(CAMPAIGN):
-                continue
-            if parsed not in urls:
-                urls.append(parsed)
+            product_url = canonical_url(full)
+            if product_url not in seen:
+                seen.add(product_url)
+                urls.append(product_url)
         except Exception:
             continue
     return urls
@@ -110,7 +107,10 @@ def discover_urls(page, max_pages=50):
 
 
 def extract_product(page, url):
+    url = canonical_url(url)  # defensa adicional: no visitar páginas de categoría
     page.goto(url, wait_until="domcontentloaded", timeout=30000)
+    if not is_product_url(page.url):
+        raise ValueError(f"La ficha redirigió a una página que no es producto: {page.url[:180]}")
     page.wait_for_timeout(1400)
     close_popups(page)
     for _ in range(3):
@@ -227,6 +227,8 @@ def extract_product(page, url):
     )
 
     notes = []
+    if not title:
+        notes.append("nombre de producto no detectado")
     if price_current is None:
         notes.append("precio no detectado")
     if miles_current is None:
