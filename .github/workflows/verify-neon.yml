@@ -1,0 +1,31 @@
+name: Verificar base de datos Neon
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  neon-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias de conexión
+        run: pip install 'psycopg[binary]>=3.2,<4' 'python-dotenv>=1.0,<2'
+      - name: Comprobar secreto configurado
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "Falta DATABASE_URL en Settings > Secrets and variables > Actions" >&2
+            exit 1
+          fi
+      - name: Probar conexión, esquema y escritura
+        run: python scripts/check_neon.py

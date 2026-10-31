@@ -4,6 +4,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 import pandas as pd
 from playwright.sync_api import sync_playwright
@@ -106,6 +107,8 @@ def main():
     args=ap.parse_args()
     if args.batch_size<1 or args.max_pages<1 or args.limit<0:
         ap.error("Parámetros fuera de rango")
+    load_dotenv(".env.local", override=False)
+    load_dotenv(".env", override=False)
     db_url=os.getenv("DATABASE_URL","")
     if not db_url:
         ap.error("Falta DATABASE_URL en el entorno")

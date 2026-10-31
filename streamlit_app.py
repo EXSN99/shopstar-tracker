@@ -4,8 +4,12 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
+from dotenv import load_dotenv
 from db import list_runs, comparison_for_run, product_history, runs_trend
 from metrics import RATIO_UMBRAL, calc_change_pct
+
+load_dotenv(".env.local", override=False)
+load_dotenv(".env", override=False)
 
 st.set_page_config(page_title="Shopstar | Observatorio de ofertas", page_icon="📉", layout="wide")
 LIMA=ZoneInfo("America/Lima")

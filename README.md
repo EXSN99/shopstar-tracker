@@ -69,3 +69,48 @@ Se registran capturas con estado `OK`, `PARTIAL` y `ERROR`; los errores no se co
 El proceso secuencial puede tardar, generar errores o ser bloqueado por cambios del sitio; respeta los términos de acceso. No contiene bypass anti-bot ni manejo de precios especiales de tarjeta Interbank.
 
 Referencias: [GitHub Actions](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#schedule), [Streamlit Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy), [Neon](https://neon.com/docs/get-started-with-neon/connect-neon).
+
+## Conectar el proyecto Neon existente (octubre 2026)
+
+Los siguientes identificadores **no son contraseñas**, pero nunca publiques `DATABASE_URL`:
+
+- Neon project: `shopstar-tracker`
+- Organización: `org-small-frog-54927481`
+- Project ID: `super-glade-87180589`
+- Rama deseada en Neon: `production`
+
+### Opción recomendada: usar la conexión del dashboard
+
+1. En [Neon Console](https://console.neon.tech/), entra a `shopstar-tracker` y selecciona la rama **production**. Si aún no existe, créala primero (sin borrar la rama predeterminada).
+2. Abre **Connect** y copia la cadena de conexión PostgreSQL con `sslmode=require`. Para el dashboard se recomienda la URL **pooled**; para operaciones de DDL/migración, Neon recomienda una conexión **directa**.
+3. Guarda una URL adecuada para escribir y crear tablas en el secreto `DATABASE_URL` de **GitHub → Settings → Secrets and variables → Actions**.
+4. Ve a **Actions → Verificar base de datos Neon → Run workflow**. Esto comprueba conectividad y permisos, crea las tres tablas si faltan, escribe en una tabla temporal y verifica lectura.
+5. Una vez la prueba haya pasado, ve a **Actions → Extraer Shopstar**, ejecuta con `max_pages=2` y `limit=5`.
+6. En Streamlit Community Cloud configura `DATABASE_URL` en los Secrets de la app. Idealmente utiliza un usuario PostgreSQL **solo lectura**, con permisos SELECT sobre las tres tablas. En esta app Streamlit no modifica datos.
+
+### Opción CLI — las instrucciones que entregó Neon
+
+Usa el terminal de tu equipo local, **dentro de la raíz del repositorio**:
+
+```powershell
+npm i -g neon@latest
+neon init -y --org-id org-small-frog-54927481 --project-id super-glade-87180589 --branch production --services postgres
+neon deploy
+```
+
+Si el CLI solicita autenticación web, finaliza el login en tu navegador. En caso de fallo puedes ejecutar `neon login` (o `neon auth` según la versión instalada). `neon deploy` solo es necesario para aplicar configuraciones declarativas de Neon; **PostgreSQL ya existe** en el proyecto creado en Neon. No añadimos una aplicación Node.js ni un `npm run build` ficticio.
+
+`neon deploy` puede descargar `DATABASE_URL` en `.env.local`. El scraper y Streamlit local cargan ahora ese archivo con `python-dotenv`; `.env.local` y `.neon` están ignorados por Git.
+
+Probar localmente después de `neon deploy`:
+
+```powershell
+pip install -r requirements-scraper.txt
+python scripts/check_neon.py
+python run_pipeline.py --max-pages 2 --limit 5
+streamlit run streamlit_app.py
+```
+
+Para verificar **este proyecto Python**, usa `python -m pytest -q` y `python -m compileall -q .`. No existe `package.json`, por tanto `npm run build` no aplica.
+
+Si tu red o la autenticación impiden instalar Neon CLI, configura `DATABASE_URL` desde Neon Console: no bloquea el despliegue de este scraper Python.
