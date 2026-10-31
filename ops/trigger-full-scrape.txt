@@ -1,0 +1,4 @@
+Extracción completa extraordinaria de Shopstar.
+Fecha solicitada: 2026-10-30, America/Lima.
+Parámetros del workflow: max_pages=50; limit=0 (todos los productos descubiertos).
+Este archivo es el disparador excepcional. No editarlo en cambios ordinarios del dashboard.
