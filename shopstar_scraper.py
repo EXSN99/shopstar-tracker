@@ -1,5 +1,3 @@
-import os
-from sqlalchemy import create_engine
 import argparse
 import re
 from datetime import datetime
@@ -235,7 +233,7 @@ def extract_product(page, url):
         notes.append("millas no detectadas")
 
     status = "OK" if not notes else "PARTIAL"
-    is_good = miles_per_sol is not None and miles_per_sol < 20
+    is_good = miles_per_sol is not None and miles_per_sol <= 20
 
     # Score only for offers; lower ratio wins, then higher real miles discount.
     score = None
@@ -267,104 +265,3 @@ def extract_product(page, url):
     }
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--input", default="", help="CSV existente con columna url; si se omite, descubre la campaña")
-    ap.add_argument("--output-dir", default="output")
-    ap.add_argument("--headed", action="store_true")
-    ap.add_argument("--max-pages", type=int, default=50)
-    ap.add_argument("--limit", type=int, default=0)
-    args = ap.parse_args()
-
-    out = Path(args.output_dir)
-    out.mkdir(parents=True, exist_ok=True)
-
-    print("Iniciando scraper unificado...", flush=True)
-    print(f"Headless={not args.headed} | max_pages={args.max_pages}", flush=True)
-
-    with sync_playwright() as p:
-        print("Inicializando Chromium...", flush=True)
-        browser = p.chromium.launch(headless=not args.headed)
-        context = browser.new_context(
-            viewport={"width": 1440, "height": 1000},
-            locale="es-PE",
-        )
-        page = context.new_page()
-        page.set_default_timeout(5000)
-
-        if args.input:
-            df_in = pd.read_csv(args.input)
-            urls = df_in["url"].dropna().astype(str).drop_duplicates().tolist()
-            print(f"URLs cargadas desde CSV: {len(urls)}", flush=True)
-        else:
-            urls = discover_urls(page, args.max_pages)
-            print(f"Total URLs descubiertas: {len(urls)}", flush=True)
-
-        if args.limit > 0:
-            urls = urls[:args.limit]
-            print(f"Limit aplicado: {len(urls)}", flush=True)
-
-        results = []
-        total = len(urls)
-        for idx, url in enumerate(urls, 1):
-            print(f"[{idx:03d}/{total:03d}] {url}", flush=True)
-            try:
-                result = extract_product(page, url)
-            except Exception as e:
-                result = {
-                    "url": url,
-                    "product_name": "",
-                    "seller": "",
-                    "price_current": None,
-                    "price_previous": None,
-                    "price_discount_pct": None,
-                    "miles_current": None,
-                    "miles_previous": None,
-                    "miles_per_sol": None,
-                    "miles_discount_pct": None,
-                    "miles_offer": "",
-                    "offer_level": "",
-                    "score": None,
-                    "status": "ERROR",
-                    "notes": str(e)[:300],
-                    "captured_at": datetime.now().isoformat(timespec="seconds"),
-                }
-            results.append(result)
-
-        browser.close()
-
-    df = pd.DataFrame(results)
-    df = df.sort_values(
-        ["miles_offer", "score", "miles_per_sol"],
-        ascending=[False, False, True],
-        na_position="last",
-    ).reset_index(drop=True)
-    df.insert(0, "rank", range(1, len(df) + 1))
-
-    best = df[(df["miles_per_sol"].notna()) & (df["miles_per_sol"] < 20)].copy()
-    review = df[df["status"].isin(["PARTIAL", "ERROR"])].copy()
-
-    # ... código anterior del dataframe ...
-    df = df.sort_values(
-        ["miles_offer", "score", "miles_per_sol"],
-        ascending=[False, False, True],
-        na_position="last",
-    ).reset_index(drop=True)
-
-    db_url = os.getenv("DATABASE_URL")
-    
-    if db_url:
-        print("Conectando a PostgreSQL...", flush=True)
-        # Adaptación del prefijo de conexión por si viene como 'postgres://'
-        if db_url.startswith("postgres://"):
-            db_url = db_url.replace("postgres://", "postgresql://", 1)
-            
-        engine = create_engine(db_url)
-        # Guardamos en la tabla que creamos en Supabase
-        df.to_sql("price_history", engine, if_exists="append", index=False)
-        print(f"✅ {len(df)} registros guardados en PostgreSQL exitosamente.", flush=True)
-    else:
-        print("⚠️ No se encontró DATABASE_URL. El historial no se guardó en BD.", flush=True)
-
-if __name__ == "__main__":
-    main()

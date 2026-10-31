@@ -1,0 +1,66 @@
+name: Extraer Shopstar
+
+on:
+  schedule:
+    - cron: '17 8,20 * * *'
+      timezone: 'America/Lima'
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: 'Número máximo de páginas de campaña'
+        required: false
+        default: '50'
+        type: string
+      limit:
+        description: 'Máximo de productos (0 = todos; 5 para probar)'
+        required: false
+        default: '0'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shopstar-extraccion
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONUNBUFFERED: '1'
+      TZ: 'America/Lima'
+      MAX_PAGES: ${{ inputs.max_pages || '50' }}
+      LIMIT: ${{ inputs.limit || '0' }}
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-scraper.txt
+          python -m playwright install --with-deps chromium
+      - name: Validar secretos
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo 'ERROR: configura DATABASE_URL en Settings > Secrets and variables > Actions' >&2
+            exit 1
+          fi
+      - name: Extraer y almacenar histórico
+        run: |
+          python run_pipeline.py --max-pages "$MAX_PAGES" --limit "$LIMIT" --output-dir output
+      - name: Adjuntar CSV y Excel
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shopstar-${{ github.run_number }}
+          path: output/
+          retention-days: 7
+          if-no-files-found: ignore
