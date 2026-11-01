@@ -146,7 +146,7 @@ producto y calidad de extracciones. Al actualizar la rama `main`, Streamlit
 Community Cloud sincroniza los cambios y reinstala dependencias nuevas.
 
 El workflow `Extraer Shopstar` se programa automáticamente **todos los días a
-las 08:17 y 20:17 en Lima** (`America/Lima`). Cada ejecución programada usa
+las 08:17 y 20:17 en Lima**, mediante cron UTC (`17 1,13 * * *`, Perú = UTC−5). Cada ejecución programada usa
 `max_pages=50` y `limit=0` (sin límite de productos). La concurrencia
 `shopstar-extraccion` evita ejecuciones simultáneas, y los datos se agregan
 por corrida en Neon PostgreSQL sin sobreescribir el histórico.
@@ -162,3 +162,20 @@ permanecen asociados a una corrida `FAILED`, nunca se presentan como un
 escaneo completo. El dashboard solo selecciona corridas `COMPLETED` o
 `PARTIAL`. GitHub Actions puede retrasar las ejecuciones programadas;
 la hora indicada es el horario configurado, no una garantía de inicio exacto.
+
+## Diagnóstico GitHub Actions — 1 de noviembre de 2026
+
+- Los avisos anteriores procedían del workflow histórico `Shopstar Daily Scraper`,
+  eliminado del repositorio: usaba `sqlalchemy` con dialecto `postgresql+psycopg`
+  pero instalaba `psycopg2-binary`; fallaba con
+  `ModuleNotFoundError: No module named 'psycopg'`.
+- El scraper vigente usa `psycopg 3` y sus últimas extracciones programadas
+  finalizaron correctamente. No requiere restaurar el workflow antiguo.
+- El CI instala ahora `requirements-scraper.txt`, ejecuta `pip check` y valida
+  los imports de `db.py` y `run_pipeline.py` antes de las pruebas unitarias.
+- El horario programado conserva 08:17 y 20:17 de Lima, expresado como
+  `17 1,13 * * *` en UTC (Perú no tiene horario de verano). Se elimina la
+  propiedad `timezone` para simplificar el scheduler tras observar demoras
+  importantes. GitHub no garantiza el inicio exacto de los workflows `schedule`.
+- Los mensajes de GitHub sobre ejecuciones antiguas siguen siendo parte del
+  historial; esta modificación no los elimina de tu bandeja de correo.

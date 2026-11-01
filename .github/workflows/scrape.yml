@@ -8,8 +8,10 @@ on:
     paths:
       - 'ops/trigger-full-scrape.txt'
   schedule:
-    - cron: '17 8,20 * * *'
-      timezone: 'America/Lima'
+    # Lima/Perú = UTC-5 todo el año (no utiliza horario de verano).
+    # 01:17 UTC = 20:17 en Lima (día anterior), 13:17 UTC = 08:17 Lima.
+    # Usamos UTC nativo para evitar desfases observados con timezone.
+    - cron: '17 1,13 * * *'
   workflow_dispatch:
     inputs:
       max_pages:
