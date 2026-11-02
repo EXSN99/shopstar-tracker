@@ -18,7 +18,7 @@
 | Funcionalidad | ¿Para qué sirve? |
 |:--|:--|
 | 🔎 **Explorar productos** | Consultar precios, millas, vendedores y enlaces directos a Shopstar. |
-| 🏷️ **Identificar mejores ratios** | Ordenar los productos por **millas requeridas por sol** y aplicar umbrales personalizados del proyecto. |
+| 🏷️ **Identificar mejores ratios** | Ordenar los productos por **millas requeridas por sol** y aplicar los umbrales definidos para el proyecto. |
 | 📈 **Seguir el histórico real** | Comparar precios y millas **observados en distintas extracciones**, no solo el descuento que muestra la tienda. |
 | 🚩 **Detectar aumentos de precio** | Señalar productos cuyo precio actual supera en un 10 % o más el mínimo observado previamente en el periodo elegido. |
 | 📊 **Explorar gráficos** | Visualizar distribuciones, comparaciones de productos y tendencias de captura. |
@@ -103,9 +103,9 @@ Sirve para distinguir entre **ausencia de una oferta** y **ausencia o insuficien
 
 La métrica principal es:
 
-\[
+$
 \text{Millas/S/} = \frac{\text{Millas requeridas}}{\text{Precio actual en soles}}
-\]
+$
 
 **Ejemplo ilustrativo:** si un producto cuesta **S/ 200** y requiere **3.800 millas**, su ratio es **19 millas/S/**.
 
@@ -119,10 +119,10 @@ Estos son **umbrales de análisis del proyecto**, no una calificación oficial d
 
 ### Aumento frente al mínimo observado
 
-\[
+$
 \text{Variación (\%)} =
 \left(\frac{\text{Precio actual}}{\text{Mínimo observado previo}}-1\right)\times100
-\]
+$
 
 **Ejemplo ilustrativo:** si un producto llegó a **S/ 100** en capturas previas y ahora cuesta **S/ 115**, el tablero indica **+15 %** respecto a ese mínimo.
 
